@@ -217,6 +217,29 @@ ddrescue-supervisor-check:
 user-install-check:
 	PYTHONPYCACHEPREFIX=/tmp/carv-pycache $(PYTHON) tests/test_linux_user_install.py
 
+release-check: gui-check metadata-index-check image-triage-check \
+	content-index-check scope-list-check hfsplus-fixture-check \
+	ntfs-hypersafe-fixture-check postscan-contract-check scan-state-check \
+	ddrescue-supervisor-check user-install-check
+
+check-ubuntu-release-host:
+	@test "$$(uname -s)" = "Linux" || { \
+		echo "Ubuntu release packages must be built on Linux, not $$(uname -s)." >&2; \
+		exit 2; \
+	}
+	@test "$$(uname -m)" = "x86_64" || { \
+		echo "This pre-release target requires x86_64, not $$(uname -m)." >&2; \
+		exit 2; \
+	}
+	@command -v dpkg-deb >/dev/null 2>&1 || { \
+		echo "dpkg-deb is required to build the Ubuntu package." >&2; \
+		exit 2; \
+	}
+	@test "$$(dpkg --print-architecture)" = "amd64" || { \
+		echo "This pre-release target requires Debian architecture amd64." >&2; \
+		exit 2; \
+	}
+
 hfsplus-extent-report:
 	@test -n "$(INDEX_DIR)" || { echo "usage: make hfsplus-extent-report INDEX_DIR=/path/to/state/metadata/index" >&2; exit 2; }
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/hfsplus_extent_report.c src/metadata_index.c src/metadata_outcome.c -o /tmp/carv-hfsplus-extent-report
@@ -239,10 +262,15 @@ uninstall-user:
 
 # Rebuild from a cleaner Linux-like baseline so local macOS env flags
 # do not accidentally hide Ubuntu build issues.
-ubuntu-build:
+ubuntu-build: check-ubuntu-release-host
 	CPPFLAGS= CFLAGS= LDFLAGS= $(MAKE) clean CC=gcc
 	CPPFLAGS= CFLAGS= LDFLAGS= $(MAKE) all CC=gcc
 	$(MAKE) postscan-contract-check
+
+ubuntu-release: check-ubuntu-release-host
+	$(MAKE) ubuntu-build
+	$(MAKE) release-check
+	$(MAKE) release
 
 $(TARGET): $(OBJ)
 	$(JPEG_FEATURE_NOTE)
@@ -270,7 +298,7 @@ bundle: $(TARGET) $(RUNTIME_DATA) $(GUI_USER_INSTALL_MANAGER)
 	chmod +x $(BUNDLE_DIR)/$(GUI_LAUNCHER) $(BUNDLE_DIR)/$(GUI_TERMINAL_LAUNCHER) $(BUNDLE_DIR)/$(USER_INSTALLER) $(BUNDLE_DIR)/$(USER_UNINSTALLER) $(dir $(BUNDLE_DIR))$(GUI_DIST_LAUNCHER) $(BUNDLE_DIR)/scripts/carv_gui_qt.py $(BUNDLE_DIR)/scripts/carv_gui_askpass.py $(BUNDLE_DIR)/scripts/manage_linux_user_install.py
 	@printf '%s\n' "Bundled Carv $(CARV_VERSION) runtime with Qt GUI launcher created in $(BUNDLE_DIR)"
 
-bundle-archive: bundle
+bundle-archive: check-ubuntu-release-host bundle
 	rm -f $(RUNTIME_BUNDLE_ARCHIVE) $(RUNTIME_BUNDLE_SHA256)
 	tar -C $(dir $(BUNDLE_DIR)) -czf $(RUNTIME_BUNDLE_ARCHIVE) $(notdir $(BUNDLE_DIR)) $(GUI_DIST_LAUNCHER)
 	@if command -v sha256sum >/dev/null 2>&1; then \
@@ -281,7 +309,7 @@ bundle-archive: bundle
 	@printf '%s\n' "Runtime bundle archive: $(RUNTIME_BUNDLE_ARCHIVE)"
 	@printf '%s\n' "SHA-256 checksum:      $(RUNTIME_BUNDLE_SHA256)"
 
-installer: bundle
+installer: check-ubuntu-release-host bundle
 	rm -f $(LINUX_RUN_INSTALLER) $(LINUX_RUN_INSTALLER_SHA256)
 	$(PYTHON) $(GUI_USER_INSTALL_MANAGER) build-run $(BUNDLE_DIR) $(LINUX_RUN_INSTALLER) $(CARV_VERSION)
 	@if command -v sha256sum >/dev/null 2>&1; then \
@@ -292,7 +320,7 @@ installer: bundle
 	@printf '%s\n' "Single-file installer: $(LINUX_RUN_INSTALLER)"
 	@printf '%s\n' "SHA-256 checksum:     $(LINUX_RUN_INSTALLER_SHA256)"
 
-deb: bundle
+deb: check-ubuntu-release-host bundle
 	rm -f $(DEB_PACKAGE) $(DEB_PACKAGE_SHA256)
 	$(PYTHON) $(GUI_USER_INSTALL_MANAGER) build-deb $(BUNDLE_DIR) $(DEB_PACKAGE) $(CARV_VERSION) $(DEB_ARCH)
 	@if command -v sha256sum >/dev/null 2>&1; then \
@@ -378,6 +406,13 @@ re: clean all
 run: $(TARGET)
 	./$(TARGET)
 
-.PHONY: all clean re run gui gui-check desktop-dev-install desktop-dev-uninstall install-user uninstall-user user-install-check metadata-index-check hfsplus-fixture-check ntfs-hypersafe-fixture-check postscan-contract-check scan-state-check ddrescue-supervisor-check ubuntu-build bundle bundle-archive installer deb release pyinstaller-bundle pyinstaller-onefile pyinstaller-archives
+.PHONY: all clean re run gui gui-check desktop-dev-install desktop-dev-uninstall \
+	install-user uninstall-user user-install-check metadata-index-check \
+	image-triage-check content-index-check scope-list-check hfsplus-fixture-check \
+	ntfs-hypersafe-fixture-check postscan-contract-check scan-state-check \
+	ddrescue-supervisor-check hfsplus-extent-report release-check \
+	check-ubuntu-release-host ubuntu-build ubuntu-release bundle bundle-archive \
+	installer deb release pyinstaller-bundle pyinstaller-onefile \
+	pyinstaller-archives
 
 -include $(DEP)
