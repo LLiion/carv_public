@@ -52,8 +52,10 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           package="dist/carv_${RELEASE_VERSION}_amd64.deb"
-          checksum="${package}.sha256"
-          sha256sum --check "$checksum"
+          (
+            cd dist
+            sha256sum --check "carv_${RELEASE_VERSION}_amd64.deb.sha256"
+          )
           test "$(dpkg-deb --field "$package" Package)" = "carv"
           test "$(dpkg-deb --field "$package" Version)" = "$RELEASE_VERSION"
           test "$(dpkg-deb --field "$package" Architecture)" = "amd64"
