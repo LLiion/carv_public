@@ -1,0 +1,74 @@
+name: Build Ubuntu package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Carv version to build
+        required: true
+        default: 0.0.1
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-ubuntu-amd64:
+    name: Ubuntu 24.04 amd64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@v7
+
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential \
+            gddrescue \
+            libjpeg-dev \
+            libsqlite3-dev \
+            pkg-config \
+            python3
+
+      - name: Validate requested version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must use numeric X.Y.Z form." >&2
+            exit 2
+          fi
+
+      - name: Build, test and package
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: make ubuntu-release CARV_VERSION="$RELEASE_VERSION"
+
+      - name: Verify Debian package and checksum
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          package="dist/carv_${RELEASE_VERSION}_amd64.deb"
+          checksum="${package}.sha256"
+          sha256sum --check "$checksum"
+          test "$(dpkg-deb --field "$package" Package)" = "carv"
+          test "$(dpkg-deb --field "$package" Version)" = "$RELEASE_VERSION"
+          test "$(dpkg-deb --field "$package" Architecture)" = "amd64"
+          test "$(dpkg-deb --field "$package" Maintainer)" = \
+            "Lotta Leijon <info.carv@proton.me>"
+          file carv
+          ldd carv
+
+      - name: Store verified Ubuntu package
+        uses: actions/upload-artifact@v7
+        with:
+          name: carv-${{ inputs.version }}-ubuntu-24.04-amd64
+          path: |
+            dist/carv_${{ inputs.version }}_amd64.deb
+            dist/carv_${{ inputs.version }}_amd64.deb.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
