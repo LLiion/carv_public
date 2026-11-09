@@ -1,0 +1,22 @@
+#ifndef CONTAINER_CONTEXT_H
+#define CONTAINER_CONTEXT_H
+
+typedef enum {
+    CONTAINER_CONTEXT_UNKNOWN = 0,
+    CONTAINER_CONTEXT_THUMBNAIL_CACHE,
+    CONTAINER_CONTEXT_CHROME_CACHE,
+    CONTAINER_CONTEXT_EDGE_CACHE,
+    CONTAINER_CONTEXT_AVAST_BROWSER_CACHE,
+    CONTAINER_CONTEXT_SPOTIFY_BROWSER_CACHE,
+    CONTAINER_CONTEXT_BROWSER_FILE_SYSTEM,
+    CONTAINER_CONTEXT_WINDOWS_UNISTORE,
+    CONTAINER_CONTEXT_APP_PACKAGE_STATE,
+    CONTAINER_CONTEXT_WINSXS_TEMP_INFLIGHT,
+    CONTAINER_CONTEXT_GENERIC_CACHE_DATA
+} ContainerContextKind;
+
+ContainerContextKind container_context_kind_from_path(const char *path);
+const char *container_context_label(ContainerContextKind kind);
+const char *container_context_label_from_path(const char *path);
+
+#endif

@@ -1,0 +1,46 @@
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SELF_NAME=$(basename -- "$0")
+SELF_PATH="$SCRIPT_DIR/$SELF_NAME"
+GUI_LAUNCHER="$SCRIPT_DIR/carv_gui"
+ALT_GUI_LAUNCHER="$SCRIPT_DIR/carv/carv_gui"
+
+if [ "$SELF_PATH" = "$GUI_LAUNCHER" ] && [ -x "$ALT_GUI_LAUNCHER" ]; then
+  GUI_LAUNCHER="$ALT_GUI_LAUNCHER"
+fi
+
+if [ ! -x "$GUI_LAUNCHER" ] || [ "$GUI_LAUNCHER" = "$SELF_PATH" ]; then
+  if [ -x "$ALT_GUI_LAUNCHER" ] && [ "$ALT_GUI_LAUNCHER" != "$SELF_PATH" ]; then
+    GUI_LAUNCHER="$ALT_GUI_LAUNCHER"
+  else
+    echo "Could not find a safe executable carv_gui target for this launcher:"
+    echo "  launcher: $SELF_PATH"
+    echo "  direct:   $SCRIPT_DIR/carv_gui"
+    echo "  bundled:  $ALT_GUI_LAUNCHER"
+    exit 1
+  fi
+fi
+
+if command -v x-terminal-emulator >/dev/null 2>&1; then
+  exec x-terminal-emulator -e "$GUI_LAUNCHER"
+fi
+
+if command -v gnome-terminal >/dev/null 2>&1; then
+  exec gnome-terminal -- "$GUI_LAUNCHER"
+fi
+
+if command -v konsole >/dev/null 2>&1; then
+  exec konsole --noclose -e "$GUI_LAUNCHER"
+fi
+
+if command -v xfce4-terminal >/dev/null 2>&1; then
+  exec xfce4-terminal --hold -e "$GUI_LAUNCHER"
+fi
+
+if command -v xterm >/dev/null 2>&1; then
+  exec xterm -hold -e "$GUI_LAUNCHER"
+fi
+
+exec "$GUI_LAUNCHER"

@@ -1,0 +1,41 @@
+# Native build output
+carv
+*.o
+*.d
+*.tmp
+build/
+dist/
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local editor and operating-system files
+.DS_Store
+.vscode/
+*.code-workspace
+
+# Per-user configuration and recovery state
+carv_ui.ini
+carv_source_devices_seen.json
+state/
+out/
+*.img
+*.map
+*.mapfile
+*.log
+*.lock
+
+# Generated release packages
+*.deb
+*.run
+*.tar.gz
+*.zip
+
+# Local scratch files and backups
+*~
+*.bak
+*.bkp
+analysis/
